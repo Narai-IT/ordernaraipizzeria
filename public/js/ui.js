@@ -40,7 +40,7 @@ export function toast(message, { bad = false, ms = 3500 } = {}) {
 
 /**
  * หน้าต่าง — คืน { close } · content เป็น function(close) ที่คืน [body, footer]
- * กด Esc หรือคลิกพื้นหลังเพื่อปิด
+ * ปิดได้จากปุ่มในหน้าต่างเท่านั้น — คลิกพื้นหลังหรือกด Esc จะสั่นเตือนแทน กันข้อมูลที่กรอกหาย
  */
 export function modal(title, content, { subtitle, wide = false } = {}) {
   const prevFocus = document.activeElement;
@@ -49,9 +49,16 @@ export function modal(title, content, { subtitle, wide = false } = {}) {
     document.removeEventListener('keydown', onKey);
     prevFocus?.focus?.();
   };
-  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  const shake = () => {
+    const box = overlay.firstChild;
+    box.classList.remove('shake');
+    void box.offsetWidth; // ให้แอนิเมชันเริ่มใหม่เวลากดซ้ำติดกัน
+    box.classList.add('shake');
+    setTimeout(() => box.classList.remove('shake'), 400);
+  };
+  const onKey = (e) => { if (e.key === 'Escape') shake(); };
   const [body, foot] = content(close);
-  const overlay = h('div', { class: 'overlay', onclick: (e) => { if (e.target === overlay) close(); } },
+  const overlay = h('div', { class: 'overlay', onclick: (e) => { if (e.target === overlay) shake(); } },
     h('div', { class: `modal${wide ? ' wide' : ''}`, role: 'dialog', 'aria-modal': 'true', 'aria-label': title },
       h('div', { class: 'modal-head' },
         h('div', {}, h('h2', {}, title), subtitle ? h('p', { class: 'muted' }, subtitle) : null),

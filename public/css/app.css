@@ -290,6 +290,12 @@ td.wrap { white-space: normal; min-width: 200px; }
   border-radius: 14px; box-shadow: var(--shadow); border: 1px solid var(--line);
 }
 .modal.wide { width: min(880px, 100%); }
+.modal.shake { animation: shake .4s ease; }
+@keyframes shake {
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+@media (prefers-reduced-motion: reduce) { .modal.shake { animation: none; outline: 2px solid var(--bad); } }
 .modal-head { padding: 18px 20px 12px; display: flex; justify-content: space-between; gap: 12px; align-items: start; }
 .modal-body { padding: 4px 20px 16px; display: grid; gap: 14px; }
 .modal-foot { padding: 14px 20px 18px; display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; border-top: 1px solid var(--line); }
