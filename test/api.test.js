@@ -154,3 +154,15 @@ test('POST /api/orders: สินค้านอกรายการของ�
   assert.deepEqual(res.data.missing, ['777777']);
   assert.equal(calls.filter((c) => c.url.endsWith('/api/insert_order')).length, 0);
 });
+
+test('POST /api/orders: ส่งไม่ผ่านทุกใบ = ข้อความหลักเป็นเหตุผลจริง ไม่ใช่แค่ 0/1', async () => {
+  insertReply = () => ({ status: 400, body: { status: 'error', message: 'ไม่พบฐานข้อมูลของสาขา (outletId=51, branch=sum)' } });
+  const today = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).slice(0, 10);
+  const res = mockRes();
+  await orders({ method: 'POST', headers: { authorization: `Bearer ${shopToken()}` },
+    body: { deldate: today, items: [{ code: '100101', qty: 1 }] } }, res);
+  assert.equal(res.statusCode, 502);
+  assert.equal(res.data.status, 'error');
+  assert.match(res.data.message, /ไม่พบฐานข้อมูลของสาขา/);
+  assert.equal(res.data.results[0].ok, false);
+});

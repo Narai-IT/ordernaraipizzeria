@@ -77,11 +77,13 @@ async function submit(req, res, session) {
     }
   }
   const okCount = results.filter((r) => r.ok).length;
+  const firstError = results.find((r) => !r.ok);
   return res.status(okCount ? 200 : 502).json({
     status: okCount === results.length ? 'success' : okCount ? 'partial' : 'error',
+    // ส่งไม่ผ่านเลยสักใบ: ข้อความหลักต้องเป็นเหตุผลจริง ไม่ใช่แค่ "0/1" ที่บอกอะไรไม่ได้
     message: okCount === results.length
       ? `ส่งใบเบิกแล้ว ${okCount} ใบ`
-      : `ส่งสำเร็จ ${okCount}/${results.length} ใบ`,
+      : okCount ? `ส่งสำเร็จ ${okCount}/${results.length} ใบ` : `ส่งใบเบิกไม่สำเร็จ: ${firstError.message}`,
     results,
   });
 }
