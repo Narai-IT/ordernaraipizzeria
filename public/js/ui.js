@@ -42,7 +42,7 @@ export function toast(message, { bad = false, ms = 3500 } = {}) {
  * หน้าต่าง — คืน { close } · content เป็น function(close) ที่คืน [body, footer]
  * กด Esc หรือคลิกพื้นหลังเพื่อปิด
  */
-export function modal(title, content, { subtitle } = {}) {
+export function modal(title, content, { subtitle, wide = false } = {}) {
   const prevFocus = document.activeElement;
   const close = () => {
     overlay.remove();
@@ -52,7 +52,7 @@ export function modal(title, content, { subtitle } = {}) {
   const onKey = (e) => { if (e.key === 'Escape') close(); };
   const [body, foot] = content(close);
   const overlay = h('div', { class: 'overlay', onclick: (e) => { if (e.target === overlay) close(); } },
-    h('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': title },
+    h('div', { class: `modal${wide ? ' wide' : ''}`, role: 'dialog', 'aria-modal': 'true', 'aria-label': title },
       h('div', { class: 'modal-head' },
         h('div', {}, h('h2', {}, title), subtitle ? h('p', { class: 'muted' }, subtitle) : null),
         h('button', { class: 'btn btn-ghost btn-sm', onclick: close, 'aria-label': 'ปิด' }, '✕')),

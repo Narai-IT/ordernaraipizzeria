@@ -109,10 +109,40 @@ export async function me(token) {
   return { session: s };
 }
 
+// รายการที่แต่ละร้านเบิกได้ (แทน dbo.order_shop_item) — ครัวกลาง FCT ยังไม่ได้ตั้ง ไว้ดูหน้าว่าง
+const allowed = new Map(shops.map((s) => [s.shopNo, new Set(
+  s.code === 'FCT' ? [] : items.filter((it, i) => s.code === 'SUM' || i % 4 !== 3).map((it) => it.code),
+)]));
+// สินค้าที่ "ผูกกับสาขาในสต๊อกสาขา" (แทน stock_item_branch) ไว้ลองปุ่มเลือกตามสต๊อกสาขา
+const inBranch = (code) => Number(code.slice(-1)) % 2 === 1;
+
 async function listItems(token) {
-  need(token, 'shop');
+  const s = need(token, 'shop');
   await wait();
-  return { items: items.map((it) => ({ ...it })), scoped: true };
+  const mine = allowed.get(s.shopNo) || new Set();
+  return { items: items.filter((it) => mine.has(it.code)).map((it) => ({ ...it })), configured: mine.size > 0 };
+}
+
+async function shopItems(token, shopNo) {
+  need(token, 'admin');
+  await wait();
+  const shop = shops.find((x) => x.shopNo === Number(shopNo));
+  if (!shop) throw new ApiError(`ไม่พบร้านรหัส ${shopNo}`, 400);
+  const mine = allowed.get(shop.shopNo) || new Set();
+  return { shop: { ...shop }, items: items.map((it) => ({ ...it, selected: mine.has(it.code), inBranch: inBranch(it.code) })) };
+}
+
+async function setShopItems(token, shopNo, codes) {
+  need(token, 'admin');
+  await wait(400);
+  const shop = shops.find((x) => x.shopNo === Number(shopNo));
+  if (!shop) throw new ApiError(`ไม่พบร้านรหัส ${shopNo}`, 400);
+  const norm = (c) => String(c ?? '').trim().replace(/\.0+$/, '').replace(/^0+/, '').toLowerCase();
+  const byNorm = new Map(items.map((it) => [norm(it.code), it.code]));
+  const wanted = [...new Set((codes || []).map(norm).filter(Boolean))];
+  const keep = new Set(wanted.map((c) => byNorm.get(c)).filter(Boolean));
+  allowed.set(shop.shopNo, keep);
+  return { count: keep.size, unknown: wanted.filter((c) => !byNorm.has(c)), message: `บันทึกรายการที่ร้าน ${shop.code} เบิกได้ ${keep.size} รายการ` };
 }
 
 async function listOrders(token) {
@@ -146,6 +176,8 @@ export async function submit(token, { deldate, items: req }) {
   const s = need(token, 'shop');
   await wait(700);
   if (!deldate) throw new ApiError('กรุณาเลือกวันที่รับสินค้า', 400);
+  const mine = allowed.get(s.shopNo) || new Set();
+  if ((req || []).some((r) => !mine.has(r.code))) throw new ApiError('มีสินค้าที่ร้านนี้เบิกไม่ได้ — รีเฟรชหน้าแล้วลองใหม่', 400);
   const lines = (req || []).filter((r) => Number(r.qty) > 0)
     .map((r) => ({ ...items.find((it) => it.code === r.code), qty: Number(r.qty) }));
   if (!lines.length) throw new ApiError('ยังไม่ได้ใส่จำนวนที่จะเบิก', 400);
@@ -160,9 +192,9 @@ export async function submit(token, { deldate, items: req }) {
 async function listShops(token) {
   need(token, 'admin');
   await wait();
-  return { shops: shops.map((x) => ({ ...x })) };
+  return { shops: shops.map((x) => ({ ...x, itemCount: allowed.get(x.shopNo)?.size || 0 })) };
 }
-export { listItems as items, listOrders as orders, getOrder as order, listShops as shops };
+export { listItems as items, listOrders as orders, getOrder as order, listShops as shops, shopItems, setShopItems };
 
 export async function saveShop(token, b) {
   need(token, 'admin');
@@ -182,9 +214,11 @@ export async function saveShop(token, b) {
   if (b.isNew) {
     row = { shopNo, code, name, isActive: b.isActive !== false, hasPassword: true, lastLoginAt: null };
     shops.push(row);
+    allowed.set(shopNo, new Set());
   } else {
     row = shops.find((x) => x.shopNo === orig);
     if (!row) throw new ApiError(`ไม่พบร้านรหัส ${orig}`, 400);
+    if (orig !== shopNo) { allowed.set(shopNo, allowed.get(orig) || new Set()); allowed.delete(orig); }
     Object.assign(row, { shopNo, code, name, isActive: b.isActive !== false });
   }
   return { shop: { ...row }, message: `บันทึกร้าน ${code} แล้ว` };

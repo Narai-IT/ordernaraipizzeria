@@ -44,7 +44,8 @@ async function submit(req, res, session) {
   const dateError = validateDelDate(body.deldate);
   if (dateError) return fail(res, 400, dateError);
 
-  const { items: registry } = await office('orderShopItems', { branch: session.code });
+  // รายการที่ร้านนี้เบิกได้เท่านั้น — ของนอกรายการตกเป็น unknown ไม่ถูกส่ง
+  const { items: registry } = await office('orderShopItems', { shopNo: session.shopNo });
   const { lines, unknown } = buildLines(body.items, registry);
   if (unknown.length) {
     return fail(res, 400, `มีสินค้าที่ร้านนี้เบิกไม่ได้ ${unknown.length} รายการ — รีเฟรชหน้าแล้วลองใหม่`, { missing: unknown });
