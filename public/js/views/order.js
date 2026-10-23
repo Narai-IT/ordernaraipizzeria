@@ -198,7 +198,13 @@ export async function renderOrder(root, session) {
           close();
           showResult(res);
         } catch (e) {
-          toast(e.message, { bad: true, ms: 6000 });
+          // ส่งไม่ผ่านทุกใบ — ยังมีผลรายใบพร้อมเหตุผลติดมา แสดงหน้าต่างผลเหมือนตอนส่งได้บางใบ
+          if (Array.isArray(e.body?.results)) {
+            close();
+            showResult(e.body);
+          } else {
+            toast(e.message, { bad: true, ms: 8000 });
+          }
         }
       }) }, `ส่ง ${groups.length} ใบเบิก`);
       return [[
@@ -225,10 +231,12 @@ export async function renderOrder(root, session) {
     saveDraft();
     renderCart();
     cart.classList.remove('open');
-    modal(okDocs.length === res.results.length ? 'ส่งใบเบิกแล้ว' : 'ส่งได้บางใบ', (close) => [
+    const title = okDocs.length === res.results.length ? 'ส่งใบเบิกแล้ว' : okDocs.length ? 'ส่งได้บางใบ' : 'ส่งใบเบิกไม่สำเร็จ';
+    modal(title, (close) => [
       res.results.map((r) => h('div', { class: `result-doc${r.ok ? '' : ' bad'}` },
         h('div', {}, h('div', { style: 'font-weight:500' }, r.label),
-          h('small', { class: r.ok ? 'muted' : 'err' }, r.ok ? `${r.count} รายการ · รับ ${thDate(r.deldate, { dow: true })}` : r.message)),
+          h('small', { class: r.ok ? 'muted' : 'err' }, r.ok ? `${r.count} รายการ · รับ ${thDate(r.deldate, { dow: true })}` : r.message),
+          !r.ok && r.missing?.length ? h('small', { class: 'err', style: 'display:block' }, r.missing.slice(0, 5).join(' · ')) : null),
         r.ok ? h('div', { style: 'text-align:right' }, h('div', { class: 'label' }, 'เลขที่'), h('div', { class: 'docno' }, r.no)) : null)),
       [h('button', { class: 'btn', onclick: close }, 'เบิกต่อ'),
         h('button', { class: 'btn btn-primary', onclick: () => { close(); navigate('history'); } }, 'ดูใบเบิกของร้าน')],
