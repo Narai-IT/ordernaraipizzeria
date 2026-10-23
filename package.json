@@ -1,0 +1,13 @@
+{
+  "name": "ordernaraipizzeria",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "เว็บเบิกของสำหรับร้าน — ใช้ฐานข้อมูล InventoryNarai และ API ชุดเดียวกับ narai-branch",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "node scripts/dev-server.mjs",
+    "demo": "node scripts/dev-server.mjs --demo",
+    "test": "node --test test/*.test.js"
+  }
+}
