@@ -99,9 +99,9 @@ test('POST /api/orders: ส่งในนาม outlet จาก token แล�
   }
   assert.deepEqual(inserts[0].body.items, [{ itemId: 11, itemCode: '100101', itemName: 'แป้งพิซซ่า', qty: 20, unit: 'ก้อน', price: 18 }]);
   assert.equal(inserts[1].body.items[0].itemCode, '100501');
-  // office-server ได้รับคำขอทะเบียนของสาขาจาก token
+  // office-server ได้รับคำขอรายการที่เบิกได้ของร้านจาก token
   const reg = calls.find((c) => c.body?.action === 'orderShopItems');
-  assert.equal(reg.body.branch, 'SUM');
+  assert.equal(reg.body.shopNo, 51);
 });
 
 test('POST /api/orders: ใบหนึ่งล้มอีกใบผ่าน = partial พร้อมเหตุผล', async () => {
@@ -143,4 +143,14 @@ test('auth: ร้านล็อกอินได้ token · รหัสผ�
   const notAdmin = mockRes();
   await auth({ method: 'POST', headers: {}, body: { mode: 'admin', username: 'kai', password: 'x' } }, notAdmin);
   assert.equal(notAdmin.statusCode, 403);
+});
+
+test('POST /api/orders: สินค้านอกรายการของร้าน = 400 และไม่ส่งใบเบิก', async () => {
+  const today = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).slice(0, 10);
+  const res = mockRes();
+  await orders({ method: 'POST', headers: { authorization: `Bearer ${shopToken()}` },
+    body: { deldate: today, items: [{ code: '100101', qty: 1 }, { code: '777777', qty: 1 }] } }, res);
+  assert.equal(res.statusCode, 400);
+  assert.deepEqual(res.data.missing, ['777777']);
+  assert.equal(calls.filter((c) => c.url.endsWith('/api/insert_order')).length, 0);
 });

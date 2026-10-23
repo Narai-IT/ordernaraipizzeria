@@ -23,12 +23,20 @@ export async function renderOrder(root, session) {
   page.append(h('div', { class: 'empty' }, 'กำลังโหลดรายการสินค้า…'));
 
   let items;
-  let scoped;
   try {
-    ({ items, scoped } = await api.items());
+    ({ items } = await api.items());
   } catch (e) {
     page.replaceChildren(h('div', { class: 'empty' }, h('p', {}, e.message),
       h('button', { class: 'btn', style: 'margin-top:12px', onclick: () => renderOrder(root, session) }, 'ลองใหม่')));
+    return;
+  }
+  if (!items.length) {
+    page.replaceChildren(h('div', { class: 'page-head' }, h('h1', {}, 'เบิกของเข้าร้าน')),
+      h('div', { class: 'items' }, h('div', { class: 'empty' },
+        h('h3', {}, 'ร้านนี้ยังไม่มีรายการสินค้าที่เบิกได้'),
+        h('p', { style: 'margin-top:6px' }, 'ติดต่อผู้ดูแลระบบให้ตั้งรายการสินค้าของร้าน '),
+        h('p', { style: 'margin-top:10px' }, shopCode(session.shopNo, session.code), ' ', session.name))));
+    store.del(draftKey);
     return;
   }
   const byCode = new Map(items.map((it) => [it.code, it]));
@@ -230,7 +238,7 @@ export async function renderOrder(root, session) {
   page.replaceChildren(
     h('div', { class: 'page-head' },
       h('div', {}, h('h1', {}, 'เบิกของเข้าร้าน'),
-        h('p', {}, scoped ? 'สินค้าที่ร้านนี้เบิกได้ จากทะเบียนสินค้าเดียวกับหน้านับสต๊อก' : 'ร้านนี้ยังไม่ได้ผูกรายการสินค้า จึงแสดงทั้งทะเบียน'))),
+        h('p', {}, `สินค้าที่ร้านนี้เบิกได้ ${items.length} รายการ`))),
     h('div', { class: 'order-layout' },
       h('section', { style: 'display:grid;gap:12px;min-width:0' },
         h('div', { class: 'toolbar' }, search), chips, list),

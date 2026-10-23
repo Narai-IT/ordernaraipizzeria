@@ -289,6 +289,7 @@ td.wrap { white-space: normal; min-width: 200px; }
   width: min(560px, 100%); max-height: calc(100vh - 48px); overflow: auto; background: var(--surface);
   border-radius: 14px; box-shadow: var(--shadow); border: 1px solid var(--line);
 }
+.modal.wide { width: min(880px, 100%); }
 .modal-head { padding: 18px 20px 12px; display: flex; justify-content: space-between; gap: 12px; align-items: start; }
 .modal-body { padding: 4px 20px 16px; display: grid; gap: 14px; }
 .modal-foot { padding: 14px 20px 18px; display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; border-top: 1px solid var(--line); }
@@ -312,3 +313,27 @@ td.wrap { white-space: normal; min-width: 200px; }
 .spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+
+/* ---------- ตั้งรายการสินค้าที่ร้านเบิกได้ ---------- */
+.pick-filters .input { flex: 1 1 160px; width: auto; }
+.pick-filters #pick-search { flex: 2 1 240px; }
+.pick-list { border: 1px solid var(--line); border-radius: var(--r); max-height: 52vh; overflow: auto; }
+.pick-head {
+  position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 10px; padding: 7px 14px;
+  background: var(--surface-2); border-top: 1px solid var(--line); cursor: pointer;
+}
+.pick-head:first-child { border-top: 0; }
+.pick-head .n { margin-left: auto; font-family: var(--f-mono); font-size: .8rem; }
+.pick-row {
+  display: grid; grid-template-columns: 18px 72px minmax(0, 1fr) auto; gap: 10px; align-items: center;
+  padding: 7px 14px; border-top: 1px solid var(--line); cursor: pointer;
+}
+.pick-row.on { background: var(--basil-soft); }
+.pick-row .nm { min-width: 0; }
+.pick-head input, .pick-row input { width: 16px; height: 16px; accent-color: var(--basil); margin: 0; }
+.tag-branch { margin-left: 8px; background: var(--surface-2); color: var(--muted); }
+.import-box { display: grid; gap: 8px; padding: 12px 14px; border-radius: 8px; background: var(--warn-soft); }
+@media (max-width: 520px) {
+  .pick-row { grid-template-columns: 18px minmax(0, 1fr) auto; }
+  .pick-row > .mono { display: none; }
+}

@@ -61,6 +61,15 @@ export const api = {
     return d ? d.submit(getToken(), payload) : call('/api/orders', { method: 'POST', body: payload });
   },
   async shops() { const d = await backend(); return d ? d.shops(getToken()) : call('/api/shops'); },
+  async shopItems(shopNo) {
+    const d = await backend();
+    return d ? d.shopItems(getToken(), shopNo) : call(`/api/shops?items=${encodeURIComponent(shopNo)}`);
+  },
+  async setShopItems(shopNo, codes) {
+    const d = await backend();
+    return d ? d.setShopItems(getToken(), shopNo, codes)
+      : call('/api/shops', { method: 'POST', body: { op: 'setItems', shopNo, codes } });
+  },
   async saveShop(payload) {
     const d = await backend();
     return d ? d.saveShop(getToken(), payload) : call('/api/shops', { method: 'POST', body: payload });

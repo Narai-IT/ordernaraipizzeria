@@ -2,6 +2,7 @@
 
 import { h, modal, toast, busy, pill, shopCode } from '../ui.js';
 import { api } from '../api.js';
+import { openShopItems } from './shopItems.js';
 
 const CODE_RE = /^[A-Z][A-Z0-9]{2}$/;
 
@@ -29,9 +30,13 @@ export async function renderShops(root) {
       h('td', { class: 'mono' }, h('b', {}, s.code)),
       h('td', { class: 'wrap' }, s.name),
       h('td', {}, s.isActive ? pill('ok', 'ใช้งาน') : pill('off', 'ปิดใช้งาน')),
+      h('td', { class: 'r' }, h('button', {
+        class: 'btn btn-sm', title: 'ตั้งรายการสินค้าที่ร้านนี้เบิกได้',
+        onclick: () => openShopItems(s, (count) => { s.itemCount = count; draw(); }),
+      }, s.itemCount ? h('span', { class: 'mono' }, `${s.itemCount} รายการ`) : h('span', { class: 'err' }, 'ยังไม่ได้ตั้ง'))),
       h('td', { class: 'muted' }, s.lastLoginAt ? s.lastLoginAt.slice(0, 16) : 'ยังไม่เคยเข้า'),
       h('td', { class: 'r' }, h('button', { class: 'btn btn-sm', onclick: () => edit(s) }, 'แก้ไข'))))
-      : [h('tr', {}, h('td', { colspan: '6', class: 'empty' }, 'ไม่พบร้านที่ค้นหา'))]));
+      : [h('tr', {}, h('td', { colspan: '7', class: 'empty' }, 'ไม่พบร้านที่ค้นหา'))]));
     count.textContent = `${shops.filter((s) => s.isActive).length} ร้านที่ใช้งาน · ทั้งหมด ${shops.length}`;
   };
 
@@ -70,7 +75,7 @@ export async function renderShops(root) {
             name: name.value.trim(), isActive: active.checked, password: pass.value || undefined,
           });
           shops = shops.filter((s) => s.shopNo !== (shop?.shopNo ?? saved.shopNo));
-          shops.push(saved);
+          shops.push({ ...saved, itemCount: shop?.itemCount || 0 });
           draw();
           close();
           toast(`บันทึกร้าน ${saved.code} แล้ว`);
@@ -107,7 +112,7 @@ export async function renderShops(root) {
     h('div', { class: 'table-wrap' }, h('table', {},
       h('thead', {}, h('tr', {},
         h('th', { class: 'r' }, 'รหัสตัวเลข'), h('th', {}, 'รหัสสาขา'), h('th', {}, 'ชื่ออธิบาย'),
-        h('th', {}, 'สถานะ'), h('th', {}, 'เข้าใช้ล่าสุด'), h('th', {}))),
+        h('th', {}, 'สถานะ'), h('th', { class: 'r' }, 'สินค้าที่เบิกได้'), h('th', {}, 'เข้าใช้ล่าสุด'), h('th', {}))),
       tbody)));
   draw();
 }
