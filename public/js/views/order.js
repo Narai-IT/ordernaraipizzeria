@@ -177,7 +177,7 @@ export async function renderOrder(root, session) {
         h('span', { style: 'min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, it.name),
         h('span', { class: 'q' }, `${fmtQty(it.qty)} ${it.unit}`),
         h('button', { 'aria-label': `เอา ${it.name} ออก`, onclick: () => setQty(it, 0) }, '✕'))),
-    ]) : [h('p', { class: 'empty', style: 'padding:24px 18px' }, 'ยังไม่ได้เลือกสินค้า ใส่จำนวนที่ช่องด้านซ้าย')]));
+    ]) : [h('p', { class: 'empty', style: 'padding:24px 18px' }, 'ยังไม่ได้เลือกสินค้า ใส่จำนวนที่ช่องด้านซ้าย')]).filter(Boolean)); // replaceChildren ไม่ข้าม null เหมือน h() — ไม่งั้นขึ้นคำว่า "null"
     const value = lines.reduce((t, it) => t + it.qty * (it.price || 0), 0);
     cartSum.replaceChildren(
       h('span', { class: 'muted' }, `${lines.length} รายการ${groups.length > 1 ? ` · ${groups.length} ใบ` : ''}`),
