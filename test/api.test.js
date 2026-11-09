@@ -166,3 +166,13 @@ test('POST /api/orders: ส่งไม่ผ่านทุกใบ = ข้�
   assert.match(res.data.message, /ไม่พบฐานข้อมูลของสาขา/);
   assert.equal(res.data.results[0].ok, false);
 });
+
+test('describeFetchError บอกเหตุผลจริงแทน "fetch failed"', async () => {
+  const { describeFetchError } = await import('../lib/office.js');
+  const e = Object.assign(new TypeError('fetch failed'), { cause: Object.assign(new Error('getaddrinfo ENOTFOUND x.example'), { code: 'ENOTFOUND' }) });
+  const msg = describeFetchError(e, 'https://x.example/api/insert_order');
+  assert.match(msg, /ENOTFOUND/);
+  assert.match(msg, /x\.example/);
+  const agg = Object.assign(new TypeError('fetch failed'), { cause: { errors: [Object.assign(new Error('refused'), { code: 'ECONNREFUSED' })] } });
+  assert.match(describeFetchError(agg, 'https://y.example:8080/'), /ECONNREFUSED.*y\.example:8080/);
+});
