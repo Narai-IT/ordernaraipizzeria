@@ -6,7 +6,8 @@
 // outlet มาจาก token เสมอ — ร้านส่งใบเบิกในนามร้านอื่นไม่ได้แม้จะยิง API ตรง
 // ชื่อ/หน่วย/ราคา/itemId อ่านจากทะเบียนสินค้าใหม่ทุกครั้ง ไม่เชื่อค่าที่หน้าเว็บส่งมา
 
-import { office, branchGet, branchPost } from '../lib/office.js';
+import { branchGet, branchPost } from '../lib/office.js';
+import { shopAllowedItems } from '../lib/shopItems.js';
 import { ok, fail, bodyOf, requireRole, replyError } from '../lib/http.js';
 import { partitionOrderGroups } from '../public/js/orderGroups.js';
 
@@ -44,8 +45,8 @@ async function submit(req, res, session) {
   const dateError = validateDelDate(body.deldate);
   if (dateError) return fail(res, 400, dateError);
 
-  // รายการที่ร้านนี้เบิกได้เท่านั้น — ของนอกรายการตกเป็น unknown ไม่ถูกส่ง
-  const { items: registry } = await office('orderShopItems', { shopNo: session.shopNo });
+  // รายการที่ร้านนี้เบิกได้เท่านั้น (ชุดเดียวกับที่หน้าเบิกแสดง) — ของนอกรายการตกเป็น unknown ไม่ถูกส่ง
+  const { items: registry } = await shopAllowedItems(session.shopNo);
   const { lines, unknown } = buildLines(body.items, registry);
   if (unknown.length) {
     return fail(res, 400, `มีสินค้าที่ร้านนี้เบิกไม่ได้ ${unknown.length} รายการ — รีเฟรชหน้าแล้วลองใหม่`, { missing: unknown });

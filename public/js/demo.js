@@ -115,11 +115,17 @@ const allowed = new Map(shops.map((s) => [s.shopNo, new Set(
 )]));
 // สินค้าที่ "ผูกกับสาขาในสต๊อกสาขา" (แทน stock_item_branch) ไว้ลองปุ่มเลือกตามสต๊อกสาขา
 const inBranch = (code) => Number(code.slice(-1)) % 2 === 1;
+const branchOf = (shopNo) => shops.find((x) => x.shopNo === shopNo)?.code;
+const allowedFor = (shopNo) => new Set([
+  ...(allowed.get(shopNo) || []),
+  ...(branchOf(shopNo) === 'FCT' ? [] : items.filter((it) => inBranch(it.code)).map((it) => it.code)),
+]);
 
 async function listItems(token) {
   const s = need(token, 'shop');
   await wait();
-  const mine = allowed.get(s.shopNo) || new Set();
+  // แบบเดียวกับ lib/shopItems.js: ที่ผู้ดูแลเลือก + ที่ติ๊กสาขานี้ไว้ที่ office (ครัวกลาง FCT ไม่มีทั้งคู่)
+  const mine = allowedFor(s.shopNo);
   return { items: items.filter((it) => mine.has(it.code)).map((it) => ({ ...it })), configured: mine.size > 0 };
 }
 
@@ -176,7 +182,7 @@ export async function submit(token, { deldate, items: req }) {
   const s = need(token, 'shop');
   await wait(700);
   if (!deldate) throw new ApiError('กรุณาเลือกวันที่รับสินค้า', 400);
-  const mine = allowed.get(s.shopNo) || new Set();
+  const mine = allowedFor(s.shopNo);
   if ((req || []).some((r) => !mine.has(r.code))) throw new ApiError('มีสินค้าที่ร้านนี้เบิกไม่ได้ — รีเฟรชหน้าแล้วลองใหม่', 400);
   const lines = (req || []).filter((r) => Number(r.qty) > 0)
     .map((r) => ({ ...items.find((it) => it.code === r.code), qty: Number(r.qty) }));
