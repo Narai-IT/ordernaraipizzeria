@@ -6,6 +6,7 @@
 import { h, toast, modal, busy, store, thDate, bangkokDay, fmtQty, fmtBaht, shopCode } from '../ui.js';
 import { api } from '../api.js';
 import { partitionOrderGroups, SPLIT_ORDER_CATEGORIES } from '../orderGroups.js';
+import { byItemCode } from '../itemSort.js';
 import { navigate } from '../app.js';
 
 const ALL = '__all__';
@@ -71,7 +72,7 @@ export async function renderOrder(root, session) {
   };
 
   for (const c of cats) {
-    const inCat = items.filter((it) => (it.storeCat || 'ไม่มีหมวด') === c);
+    const inCat = items.filter((it) => (it.storeCat || 'ไม่มีหมวด') === c).sort(byItemCode);
     const head = h('div', { class: 'cat-head' }, h('span', { class: 'label' }, c),
       SPLIT_ORDER_CATEGORIES.includes(c) ? h('span', { class: 'split' }, 'แยกเป็นใบเบิกของตัวเอง') : null);
     list.append(head);

@@ -1,4 +1,7 @@
-// ตั้งรายการสินค้าที่ร้านเบิกได้ (ผู้ดูแล) — ติ๊กเลือกเอง / เลือกตามสต๊อกสาขา / นำเข้าจาก Excel
+// ตั้งรายการสินค้าที่ร้านเบิกได้ (ผู้ดูแล) — ติ๊กเลือกเอง / นำเข้าจาก Excel
+//
+// ของที่มีป้าย "สต๊อกสาขา" (ติ๊กสาขานี้ไว้ในหน้าวัตถุดิบของ office) ร้านเบิกได้อัตโนมัติอยู่แล้ว
+// ไม่ต้องเลือกที่นี่ — จะเอาออกต้องไปเอาติ๊กออกที่ office (ดู lib/shopItems.js)
 //
 // ไฟล์ Excel ที่รับ:
 //   - มีคอลัมน์หัวว่า "รหัส..." (หรือ code) — ไม่มีหัวแบบนี้ใช้คอลัมน์ A
@@ -9,6 +12,7 @@
 import { h, modal, toast, busy, shopCode } from '../ui.js';
 import { api } from '../api.js';
 import { normCode, codesFromRows } from '../excelCodes.js';
+import { byItemCode } from '../itemSort.js';
 
 const XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
 let xlsxLoading;
@@ -61,12 +65,12 @@ export async function openShopItems(shop, onSaved) {
     const head = h('label', { class: 'pick-head' }, box, h('span', { class: 'label' }, c), h('span', { class: 'muted n' }));
     heads.set(c, { head, box });
     list.append(head);
-    for (const it of items.filter((x) => (x.storeCat || 'ไม่มีหมวด') === c)) {
+    for (const it of items.filter((x) => (x.storeCat || 'ไม่มีหมวด') === c).sort(byItemCode)) {
       const cb = h('input', { type: 'checkbox', id: `pick-${it.code}`, checked: picked.has(it.code) });
       cb.addEventListener('change', () => { setPick(it.code, cb.checked); refresh(); });
       const row = h('label', { class: 'pick-row', for: `pick-${it.code}` }, cb,
         h('span', { class: 'mono muted' }, it.code),
-        h('span', { class: 'nm' }, it.name, it.inBranch ? h('span', { class: 'tag tag-branch', title: 'ผูกกับสาขานี้ในสต๊อกสาขา' }, 'สต๊อกสาขา') : null),
+        h('span', { class: 'nm' }, it.name, it.inBranch ? h('span', { class: 'tag tag-branch', title: 'ติ๊กสาขานี้ไว้ในหน้าวัตถุดิบของ office — ร้านเบิกได้อัตโนมัติแม้ไม่ได้เลือกที่นี่ (จะเอาออกต้องเอาติ๊กออกที่ office)' }, 'สต๊อกสาขา · อัตโนมัติ') : null),
         h('span', { class: 'muted' }, it.unit));
       rows.set(it.code, { row, cb, it, cat: c });
       list.append(row);
@@ -179,7 +183,6 @@ export async function openShopItems(shop, onSaved) {
     h('option', { value: 'all' }, 'ทั้งหมด'), h('option', { value: 'on' }, 'ที่เลือกแล้ว'), h('option', { value: 'off' }, 'ที่ยังไม่เลือก'));
   const catSel = h('select', { id: 'pick-cat', class: 'input', onchange: () => { cat = catSel.value; refresh(); } },
     h('option', { value: '' }, 'ทุกหมวด'), cats.map((c) => h('option', { value: c }, c)));
-  const branchCount = items.filter((it) => it.inBranch).length;
 
   modal(`สินค้าที่ร้าน ${shop.code} เบิกได้`, (close) => {
     const save = h('button', { class: 'btn btn-primary', onclick: () => busy(save, async () => {
@@ -198,14 +201,6 @@ export async function openShopItems(shop, onSaved) {
       h('div', { class: 'toolbar' },
         h('button', { class: 'btn btn-sm', onclick: () => fileInput.click() }, 'นำเข้าจาก Excel'),
         h('button', { class: 'btn btn-sm', onclick: (e) => exportExcel(e.currentTarget) }, 'ดาวน์โหลด Excel'),
-        branchCount ? h('button', {
-          class: 'btn btn-sm', title: 'เลือกเฉพาะสินค้าที่ผูกกับสาขานี้ในสต๊อกสาขา (คอลัมน์ J ของชีท item)',
-          onclick: () => {
-            for (const c of [...picked]) setPick(c, false);
-            for (const it of items) if (it.inBranch) setPick(it.code, true);
-            refresh();
-          },
-        }, `เลือกตามสต๊อกสาขา (${branchCount})`) : null,
         fileInput),
       h('p', { class: 'muted', style: 'font-size:.85rem' },
         'ไฟล์ Excel: ใส่รหัสสินค้าในคอลัมน์ที่หัวว่า "รหัสสินค้า" หรือคอลัมน์ A · หรือกด "ดาวน์โหลด Excel" แล้วใส่ Y ในคอลัมน์ "เบิกได้" แล้วนำเข้ากลับมา'),
@@ -214,6 +209,6 @@ export async function openShopItems(shop, onSaved) {
       list,
     ], [h('span', { class: 'muted', style: 'margin-right:auto' }, counter),
       h('button', { class: 'btn', onclick: close }, 'ยกเลิก'), save]];
-  }, { wide: true, subtitle: 'ร้านจะเห็นและเบิกได้เฉพาะสินค้าที่เลือกไว้ที่นี่' });
+  }, { wide: true, subtitle: 'ร้านเบิกได้ = ที่เลือกไว้ที่นี่ + ที่มีป้าย "สต๊อกสาขา · อัตโนมัติ" (ติ๊กสาขานี้ไว้ในหน้าวัตถุดิบของ office)' });
   refresh();
 }

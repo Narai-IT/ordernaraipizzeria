@@ -19,17 +19,29 @@ const REGISTRY = [
   { code: '100601', name: 'กล่องพิซซ่า', unit: 'ใบ', price: 9, itemId: 13, storeCat: '' },
 ];
 
+// orderShopGetItems: ทะเบียนทั้งหมด + selected (ผู้ดูแลเลือก) / inBranch (ติ๊กสาขาที่ office)
+// 100101 ผู้ดูแลเลือก · 100501 ติ๊กที่ office อย่างเดียว · 100601 ทั้งคู่ · 100701 ไม่มีทั้งคู่ (ห้ามเบิก)
+const FULL = [
+  { ...REGISTRY[0], selected: true, inBranch: false },
+  { ...REGISTRY[1], selected: false, inBranch: true },
+  { ...REGISTRY[2], selected: true, inBranch: true },
+  { code: '100701', name: 'ชีสสำรอง', unit: 'กก.', price: 300, itemId: 14, storeCat: '', selected: false, inBranch: false },
+];
+
 let calls;
 let insertReply;
+let getItemsReply;
 beforeEach(() => {
   calls = [];
+  getItemsReply = () => ({ status: 200, body: { status: 'success', data: { shop: {}, items: FULL } } });
   insertReply = () => ({ status: 200, body: { status: 'success', orderNo: 3500 + calls.length, count: 1, deldate: '2099-01-01' } });
   globalThis.fetch = async (url, init = {}) => {
     const body = init.body ? JSON.parse(init.body) : null;
     calls.push({ url: String(url), body, headers: init.headers || {} });
     let reply;
     if (String(url) === 'https://office.test/schedule') {
-      if (body.action === 'orderShopItems') reply = { status: 200, body: { status: 'success', data: { items: REGISTRY, scoped: true } } };
+      if (body.action === 'orderShopGetItems') reply = getItemsReply();
+      else if (body.action === 'orderShopItems') reply = { status: 200, body: { status: 'success', data: { items: REGISTRY, scoped: true } } };
       else if (body.action === 'orderShopLogin') {
         reply = body.password === 'right-pass'
           ? { status: 200, body: { status: 'success', data: { shop: { shopNo: 51, code: 'SUM', name: 'ร้านทดสอบ', isActive: true } } } }
@@ -100,7 +112,7 @@ test('POST /api/orders: ส่งในนาม outlet จาก token แล�
   assert.deepEqual(inserts[0].body.items, [{ itemId: 11, itemCode: '100101', itemName: 'แป้งพิซซ่า', qty: 20, unit: 'ก้อน', price: 18 }]);
   assert.equal(inserts[1].body.items[0].itemCode, '100501');
   // office-server ได้รับคำขอรายการที่เบิกได้ของร้านจาก token
-  const reg = calls.find((c) => c.body?.action === 'orderShopItems');
+  const reg = calls.find((c) => c.body?.action === 'orderShopGetItems');
   assert.equal(reg.body.shopNo, 51);
 });
 
@@ -175,4 +187,51 @@ test('describeFetchError บอกเหตุผลจริงแทน "fetch
   assert.match(msg, /x\.example/);
   const agg = Object.assign(new TypeError('fetch failed'), { cause: { errors: [Object.assign(new Error('refused'), { code: 'ECONNREFUSED' })] } });
   assert.match(describeFetchError(agg, 'https://y.example:8080/'), /ECONNREFUSED.*y\.example:8080/);
+});
+
+const { pickAllowed } = await import('../lib/shopItems.js');
+const items = (await import('../api/items.js')).default;
+
+test('pickAllowed: ที่ผู้ดูแลเลือก + ที่ติ๊กสาขาที่ office · ไม่มีทั้งคู่ = ตัดออก', () => {
+  const got = pickAllowed(FULL);
+  assert.deepEqual(got.map((it) => [it.code, it.fromBranch]), [['100101', false], ['100501', true], ['100601', false]]);
+  assert.equal('selected' in got[0], false);
+});
+
+test('GET /api/items: ร้านเห็นของที่ติ๊กสาขาไว้ที่ office ด้วย', async () => {
+  const res = mockRes();
+  await items({ method: 'GET', headers: { authorization: `Bearer ${shopToken()}` }, query: {} }, res);
+  assert.equal(res.statusCode, 200, JSON.stringify(res.data));
+  assert.deepEqual(res.data.items.map((it) => it.code), ['100101', '100501', '100601']);
+  assert.equal(res.data.configured, true);
+});
+
+test('POST /api/orders: ของที่ไม่ได้เลือกและไม่ได้ติ๊กที่ office ยังส่งไม่ได้', async () => {
+  const today = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).slice(0, 10);
+  const res = mockRes();
+  await orders({ method: 'POST', headers: { authorization: `Bearer ${shopToken()}` },
+    body: { deldate: today, items: [{ code: '100701', qty: 1 }] } }, res);
+  assert.equal(res.statusCode, 400);
+  assert.deepEqual(res.data.missing, ['100701']);
+});
+
+test('orderShopGetItems ล่ม = ถอยไปใช้รายการที่ผู้ดูแลเลือก (orderShopItems) ร้านยังเบิกได้', async () => {
+  getItemsReply = () => ({ status: 500, body: { status: 'error', message: 'boom' } });
+  const errLog = console.error;
+  console.error = () => {};
+  try {
+    const res = mockRes();
+    await items({ method: 'GET', headers: { authorization: `Bearer ${shopToken()}` }, query: {} }, res);
+    assert.equal(res.statusCode, 200, JSON.stringify(res.data));
+    assert.deepEqual(res.data.items.map((it) => it.code), REGISTRY.map((it) => it.code));
+  } finally {
+    console.error = errLog;
+  }
+});
+
+const { byItemCode } = await import('../public/js/itemSort.js');
+
+test('byItemCode: เรียงรหัสแบบตัวเลข ไม่ใช่ทีละตัวอักษร', () => {
+  const codes = ['100301', '1000002', '100101', '100205', '99'].map((code) => ({ code }));
+  assert.deepEqual(codes.sort(byItemCode).map((x) => x.code), ['99', '100101', '100205', '100301', '1000002']);
 });
