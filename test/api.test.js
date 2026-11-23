@@ -228,3 +228,10 @@ test('orderShopGetItems ล่ม = ถอยไปใช้รายการ�
     console.error = errLog;
   }
 });
+
+const { byItemCode } = await import('../public/js/itemSort.js');
+
+test('byItemCode: เรียงรหัสแบบตัวเลข ไม่ใช่ทีละตัวอักษร', () => {
+  const codes = ['100301', '1000002', '100101', '100205', '99'].map((code) => ({ code }));
+  assert.deepEqual(codes.sort(byItemCode).map((x) => x.code), ['99', '100101', '100205', '100301', '1000002']);
+});
