@@ -12,6 +12,7 @@
 import { h, modal, toast, busy, shopCode } from '../ui.js';
 import { api } from '../api.js';
 import { normCode, codesFromRows } from '../excelCodes.js';
+import { byItemCode } from '../itemSort.js';
 
 const XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
 let xlsxLoading;
@@ -64,7 +65,7 @@ export async function openShopItems(shop, onSaved) {
     const head = h('label', { class: 'pick-head' }, box, h('span', { class: 'label' }, c), h('span', { class: 'muted n' }));
     heads.set(c, { head, box });
     list.append(head);
-    for (const it of items.filter((x) => (x.storeCat || 'ไม่มีหมวด') === c)) {
+    for (const it of items.filter((x) => (x.storeCat || 'ไม่มีหมวด') === c).sort(byItemCode)) {
       const cb = h('input', { type: 'checkbox', id: `pick-${it.code}`, checked: picked.has(it.code) });
       cb.addEventListener('change', () => { setPick(it.code, cb.checked); refresh(); });
       const row = h('label', { class: 'pick-row', for: `pick-${it.code}` }, cb,
